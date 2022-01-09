@@ -20,6 +20,8 @@ libxmlsec1_mbedtls_la_CPPFLAGS = \
 
 libxmlsec1_mbedtls_la_SOURCES =\
 	globals.h \
+	crypto.c \
+	app.c \
 	$(NULL)
 
 # xmlsec-mbedtls library requires xmlsec-gcrypt
