@@ -1,6 +1,6 @@
 /**
  * SECTION:app
- * @Short_description: Application support functions for GCrypt.
+ * @Short_description: Application support functions for mbedtls.
  * @Stability: Instable
  *
  */
@@ -11,7 +11,7 @@
 
 /**
  * xmlSecMBedTLSAppInit:
- * @config:             the path to GCrypt configuration (unused).
+ * @config:             the path to mbedtls configuration (unused).
  *
  * General crypto engine initialization. This function is used
  * by XMLSec command line utility and called before
