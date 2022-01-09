@@ -1677,6 +1677,153 @@ AC_SUBST(MSCNG_CFLAGS)
 AC_SUBST(MSCNG_LIBS)
 AC_SUBST(MSCNG_CRYPTO_LIB)
 
+dnl =========================
+dnl See if we can use mbedtls
+dnl =========================
+
+MBEDTLS_MIN_VERSION="2.26.0"
+MBEDTLS_INCLUDE_DIR="$COMMON_INCLUDE_DIR /usr/local/mbedtls/include"
+MBEDTLS_LIB_DIR="$COMMON_LIB_DIR /usr/local/mbedtls/lib"
+MBEDTLS_INCLUDE_MARKER="mbedtls/mbedtls.h"
+MBEDTLS_LIB_MARKER="libmbedtls$shrext"
+MBEDTLS_CRYPTO_LIB="$XMLSEC_PACKAGE-mbedtls"
+MBEDTLS_LIBS_LIST="-lmbedtls"
+
+XMLSEC_NO_MBEDTLS="1"
+MBEDTLS_INCLUDE_PATH=
+MBEDTLS_LIB_PATH=
+MBEDTLS_FOUND="no"
+AC_ARG_WITH([mbedtls], [AC_HELP_STRING([--with-mbedtls@<:@=PFX@:>@], [mbedtls location])])
+
+dnl Priority 0: Check if library is not needed
+if test "z$with_mbedtls" = "zno" ; then
+    MBEDTLS_FOUND="disabled"
+fi
+
+dnl Priority 1: User specifies the path to installation
+if test "z$MBEDTLS_FOUND" = "zno" -a "z$with_mbedtls" != "z" -a "z$with_mbedtls" != "zyes" ; then
+    AC_MSG_CHECKING(for libmbedtls library installation in "$with_mbedtls" folder)
+    if test -f "$with_mbedtls/include/$MBEDTLS_INCLUDE_MARKER" -a -f "$with_mbedtls/lib/$MBEDTLS_LIB_MARKER" ; then
+        MBEDTLS_INCLUDE_PATH="$with_mbedtls/include"
+        MBEDTLS_LIB_PATH="$with_mbedtls/lib"
+        MBEDTLS_FOUND="yes"
+        AC_MSG_RESULT([yes])
+    else
+        AC_MSG_ERROR([not found: "$with_mbedtls/bin/$MBEDTLS_CONFIG" tool, or "$with_mbedtls/include/$MBEDTLS_INCLUDE_MARKER" and/or "$with_mbedtls/lib/$MBEDTLS_LIB_MARKER" files don't exist), typo?])
+    fi
+fi
+
+dnl Priority 2: User sets both CFLAGS and LIBS flags
+if test "z$MBEDTLS_FOUND" = "zno" -a  "z$MBEDTLS_CFLAGS" != "z" -a "z$MBEDTLS_LIBS" != "z" ; then
+    MBEDTLS_FOUND="yes"
+fi
+
+dnl Priority 3: Guess with pkg_config
+if test "z$MBEDTLS_FOUND" = "zno" -a "z$PKGCONFIG_FOUND" = "zyes" ; then
+    if test "z$MBEDTLS_FOUND" = "zno" ; then
+        PKG_CHECK_MODULES(MBEDTLS, mbedtls >= $MBEDTLS_MIN_VERSION,
+            [MBEDTLS_FOUND=yes],
+            [MBEDTLS_FOUND=no])
+    fi
+    if test "z$MBEDTLS_FOUND" = "zno" ; then
+        PKG_CHECK_MODULES(MBEDTLS, libmbedtls >= $MBEDTLS_MIN_VERSION,
+            [MBEDTLS_FOUND=yes],
+            [MBEDTLS_FOUND=no])
+    fi
+fi
+
+dnl Priority 4: Guess using a list of folders.
+if test "z$MBEDTLS_FOUND" = "zno" -a "z$ENABLE_FOLDERS_SEARCH" = "zyes" ; then
+    AC_MSG_CHECKING(for libmbedtls library installation in the typical folders)
+    if test "z$MBEDTLS_INCLUDE_PATH" = "z" ; then
+        AX_FIND_FOLDER(MBEDTLS_INCLUDE_PATH, $MBEDTLS_INCLUDE_MARKER, $MBEDTLS_INCLUDE_DIR)
+    fi
+    if test "z$MBEDTLS_LIB_PATH" = "z" ; then
+        AX_FIND_FOLDER(MBEDTLS_LIB_PATH, $MBEDTLS_LIB_MARKER, $MBEDTLS_LIB_DIR)
+    fi
+    if test "z$MBEDTLS_INCLUDE_PATH" != "z" -a "z$MBEDTLS_LIB_PATH" != "z" ; then
+        MBEDTLS_FOUND="yes"
+        AC_MSG_RESULT([yes ("-I$MBEDTLS_INCLUDE_PATH -L$MBEDTLS_LIB_PATH")])
+    else
+        AC_MSG_RESULT([not found])
+    fi
+fi
+
+dnl Priority 5: Just try to compile/link and hope for the best
+if test "z$MBEDTLS_FOUND" = "zno" ; then
+    AC_MSG_CHECKING(for mbedtls library installation)
+    OLD_CPPFLAGS=$CPPFLAGS
+    CPPFLAGS="$CPPFLAGS $MBEDTLS_CFLAGS"
+    OLD_LIBS=$LIBS
+    LIBS="$LIBS $MBEDTLS_LIBS $MBEDTLS_LIBS_LIST"
+    AC_LINK_IFELSE([
+        AC_LANG_PROGRAM([[
+            #include <mbedtls/ssl.h>
+        ]],[[
+            int main () { mbedtls_ssl_context ssl; mbedtls_ssl_init(&ssl); return(0); }
+        ]])
+    ],[
+        MBEDTLS_FOUND=yes
+        MBEDTLS_LIBS="$MBEDTLS_LIBS $MBEDTLS_LIBS_LIST"
+        AC_MSG_RESULT([yes])
+    ],[
+        MBEDTLS_FOUND=no
+        AC_MSG_RESULT([not found])
+    ])
+    CPPFLAGS=$OLD_CPPFLAGS
+    LIBS=$OLD_LIBS
+fi
+
+dnl Set CFLAGS/LIBS flags
+if test "z$MBEDTLS_FOUND" = "zyes" ; then
+    dnl Set flags if INCLUDE_PATH or LIB_PATH are set (do NOT overwrite CFLAGS/LIBS!)
+    if test "z$MBEDTLS_INCLUDE_PATH" != "z" ; then
+        MBEDTLS_CFLAGS="$MBEDTLS_CFLAGS -I$MBEDTLS_INCLUDE_PATH"
+    fi
+    if test "z$MBEDTLS_LIB_PATH" != "z" ; then
+        if test "z$with_gnu_ld" = "zyes" ; then
+            MBEDTLS_LIBS="$MBEDTLS_LIBS -Wl,-rpath-link -Wl,$MBEDTLS_LIB_PATH"
+        fi
+        MBEDTLS_LIBS="$MBEDTLS_LIBS -L$MBEDTLS_LIB_PATH $MBEDTLS_LIBS_LIST"
+    fi
+fi
+
+dnl Verify the version
+AC_MSG_CHECKING(for libmbedtls library >= $MBEDTLS_MIN_VERSION)
+if test "z$MBEDTLS_FOUND" = "zyes" ; then
+    OLD_CPPFLAGS=$CPPFLAGS
+    CPPFLAGS="$CPPFLAGS $MBEDTLS_CFLAGS"
+    dnl mbedtls uses hex digits for version number
+    minvers=`echo $MBEDTLS_MIN_VERSION | awk -F. '{ printf "%d", ($1 * 256 + $2) * 256 + $3;}'`
+    AC_EGREP_CPP(greater-than-minvers, [
+        #include <mbedtls/version.h>
+        #if MBEDTLS_VERSION_NUMBER >= $minvers
+        greater-than-minvers
+        #endif
+    ],[
+        MBEDTLS_FOUND=yes
+    ],[
+        MBEDTLS_FOUND=no
+    ])
+    CPPFLAGS=$OLD_CPPFLAGS
+fi
+AC_MSG_RESULT([$MBEDTLS_FOUND])
+
+dnl Finally set all the flags
+if test "z$MBEDTLS_FOUND" = "zyes" ; then
+    XMLSEC_NO_MBEDTLS="0"
+    MBEDTLS_CFLAGS="$MBEDTLS_CFLAGS -DXMLSEC_CRYPTO_MBEDTLS=1"
+    XMLSEC_CRYPTO_LIST="$XMLSEC_CRYPTO_LIST mbedtls"
+else
+    XMLSEC_CRYPTO_DISABLED_LIST="$XMLSEC_CRYPTO_DISABLED_LIST mbedtls"
+fi
+
+AM_CONDITIONAL(XMLSEC_NO_MBEDTLS, test "z$XMLSEC_NO_MBEDTLS" = "z1")
+AC_SUBST(XMLSEC_NO_MBEDTLS)
+AC_SUBST(MBEDTLS_CFLAGS)
+AC_SUBST(MBEDTLS_LIBS)
+AC_SUBST(MBEDTLS_CRYPTO_LIB)
+AC_SUBST(MBEDTLS_MIN_VERSION)
 
 dnl ==========================================================================
 dnl Figure out the default crypt - the first crypto library wins
@@ -1732,6 +1879,13 @@ case "z$with_default_crypto" in
             AC_MSG_ERROR('$with_default_crypto' is specified as default crypto library but it is not configured or found)
         fi
         ;;
+    'zmbedtls')
+        if test "z$XMLSEC_NO_MBEDTLS" != "z1" ; then
+            XMLSEC_DEFAULT_CRYPTO="mbedtls"
+        else
+            AC_MSG_ERROR('$with_default_crypto' is specified as default crypto library but it is not configured or found)
+        fi
+        ;;
     'z')
         dnl The first crypto library wins
         if test "z$XMLSEC_NO_MSCRYPTO" != "z1" ; then
@@ -1746,6 +1900,8 @@ case "z$with_default_crypto" in
             XMLSEC_DEFAULT_CRYPTO="gnutls"
         elif test "z$XMLSEC_NO_GCRYPT" != "z1" ; then
             XMLSEC_DEFAULT_CRYPTO="gcrypt"
+        elif test "z$XMLSEC_NO_MBEDTLS" != "z1" ; then
+            XMLSEC_DEFAULT_CRYPTO="mbedtls"
         else
             AC_MSG_ERROR(At least one crypto library should exist for $XMLSEC_PACKAGE)
         fi
@@ -1786,6 +1942,11 @@ case "$XMLSEC_DEFAULT_CRYPTO" in
         XMLSEC_CRYPTO_LIB="$GCRYPT_CRYPTO_LIB"
         XMLSEC_CRYPTO_CFLAGS="$GCRYPT_CFLAGS"
         XMLSEC_CRYPTO_LIBS="$GCRYPT_LIBS"
+        ;;
+    'mbedtls')
+        XMLSEC_CRYPTO_LIB="$MBEDTLS_CRYPTO_LIB"
+        XMLSEC_CRYPTO_CFLAGS="$MBEDTLS_CFLAGS"
+        XMLSEC_CRYPTO_LIBS="$MBEDTLS_LIBS"
         ;;
     *)
         AC_MSG_ERROR(The value \"$XMLSEC_DEFAULT_CRYPTO\" is not a recongnized crypto library name)
@@ -2419,6 +2580,10 @@ fi
 
 if test "z$XMLSEC_NO_MSCNG" != "z1" ; then
 AC_CONFIG_FILES([include/xmlsec/mscng/Makefile src/mscng/Makefile])
+fi
+
+if test "z$XMLSEC_NO_MBEDTLS" != "z" ; then
+AC_CONFIG_FILES([include/xmlsec/mbedtls/Makefile src/mbedtls/Makefile])
 fi
 
 if test "z$XMLSEC_NO_CRYPTO_DYNAMIC_LOADING" = "z1" ; then

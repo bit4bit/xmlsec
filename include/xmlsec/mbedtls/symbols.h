@@ -1,0 +1,4 @@
+#ifndef __XMLSEC_MBEDTLS_SYMBOLS_H__
+#define __XMLSEC_MBEDTLS_SYMBOLS_H__
+
+#endif /* __XMLSEC_MBEDTLS_SYMBOLS_H__ */
