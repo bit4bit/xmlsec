@@ -22,6 +22,7 @@ libxmlsec1_mbedtls_la_SOURCES =\
 	globals.h \
 	crypto.c \
 	app.c \
+	x509.c \
 	$(NULL)
 
 # xmlsec-mbedtls library requires xmlsec-gcrypt

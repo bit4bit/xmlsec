@@ -19,6 +19,13 @@ extern "C" {
 #define xmlSecCryptoInit                        xmlSecMBedTLSInit
 #define xmlSecCryptoShutdown                    xmlSecMBedTLSShutdown
 
+/********************************************************************
+ *
+ * Key data store ids
+ *
+ ********************************************************************/
+#define xmlSecX509StoreId                       xmlSecMBedTLSX509StoreId
+
   
 #endif /* XMLSEC_CRYPTO_MBEDTLS */
 

@@ -16,6 +16,7 @@
 
 #include <xmlsec/mbedtls/app.h>
 #include <xmlsec/mbedtls/crypto.h>
+#include <xmlsec/mbedtls/x509.h>
 
 static xmlSecCryptoDLFunctionsPtr gXmlSecMBedTLSFunctions = NULL;
 
@@ -36,7 +37,7 @@ xmlSecCryptoGetFunctions_mbedtls(void) {
 
     memset(&functions, 0, sizeof(functions));
     gXmlSecMBedTLSFunctions = &functions;
-    
+
     /********************************************************************
      *
      * Crypto Init/shutdown
@@ -44,6 +45,7 @@ xmlSecCryptoGetFunctions_mbedtls(void) {
      ********************************************************************/
     gXmlSecMBedTLSFunctions->cryptoInit                  = xmlSecMBedTLSInit;
     gXmlSecMBedTLSFunctions->cryptoShutdown              = xmlSecMBedTLSShutdown;
+    gXmlSecMBedTLSFunctions->cryptoKeysMngrInit = xmlSecMBedTLSKeysMngrInit;
 
         /********************************************************************
      *
@@ -52,7 +54,7 @@ xmlSecCryptoGetFunctions_mbedtls(void) {
      ********************************************************************/
     gXmlSecMBedTLSFunctions->cryptoAppInit                       = xmlSecMBedTLSAppInit;
     gXmlSecMBedTLSFunctions->cryptoAppShutdown                   = xmlSecMBedTLSAppShutdown;
-    
+
     return(gXmlSecMBedTLSFunctions);
 }
 
@@ -90,5 +92,42 @@ xmlSecMBedTLSInit (void)  {
  */
 int
 xmlSecMBedTLSShutdown(void) {
+    return(0);
+}
+
+
+/**
+ * xmlSecMBedTLSKeysMngrInit:
+ * @mngr:               the pointer to keys manager.
+ *
+ * Adds MBedTLS specific key data stores in keys manager.
+ *
+ * Returns: 0 on success or a negative value otherwise.
+ */
+int
+xmlSecMBedTLSKeysMngrInit(xmlSecKeysMngrPtr mngr) {
+    int ret;
+
+    xmlSecAssert2(mngr != NULL, -1);
+
+#ifndef XMLSEC_NO_X509
+    /* create x509 store if needed */
+    if(xmlSecKeysMngrGetDataStore(mngr, xmlSecMBedTLSX509StoreId) == NULL) {
+        xmlSecKeyDataStorePtr x509Store;
+
+        x509Store = xmlSecKeyDataStoreCreate(xmlSecMBedTLSX509StoreId);
+        if(x509Store == NULL) {
+            xmlSecInternalError("xmlSecKeyDataStoreCreate(xmlSecOpenSSLX509StoreId)", NULL);
+            return(-1);
+        }
+
+        ret = xmlSecKeysMngrAdoptDataStore(mngr, x509Store);
+        if(ret < 0) {
+            xmlSecInternalError("xmlSecKeysMngrAdoptDataStore", NULL);
+            xmlSecKeyDataStoreDestroy(x509Store);
+            return(-1);
+        }
+    }
+#endif /* XMLSEC_NO_X509 */
     return(0);
 }

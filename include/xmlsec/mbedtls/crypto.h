@@ -17,7 +17,7 @@ XMLSEC_CRYPTO_EXPORT xmlSecCryptoDLFunctionsPtr xmlSecCryptoGetFunctions_mbedtls
  ********************************************************************/
 XMLSEC_CRYPTO_EXPORT int                xmlSecMBedTLSInit                (void);
 XMLSEC_CRYPTO_EXPORT int                xmlSecMBedTLSShutdown            (void);
-
+XMLSEC_CRYPTO_EXPORT int                xmlSecMBedTLSKeysMngrInit        (xmlSecKeysMngrPtr mngr);
   
 #ifdef __cplusplus
 }
